@@ -4,5 +4,5 @@ namespace PDFToys.Core.Contracts;
 
 public interface IProtectService
 {
-    OperationResult Protect(PdfFile input, PasswordOptions options);
+    OperationResult Protect(PdfFile input, ProtectOptions options);
 }

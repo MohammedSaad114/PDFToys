@@ -4,5 +4,5 @@ namespace PDFToys.Core.Contracts;
 
 public interface ICompressionService
 {
-    OperationResult Compress(PdfFile input, CompressOptions options);
+    OperationResult Compress(PdfFile input, CompressionOptions options);
 }
