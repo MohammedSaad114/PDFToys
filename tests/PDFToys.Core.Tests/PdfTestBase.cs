@@ -1,4 +1,5 @@
 using PdfSharp.Pdf;
+using PdfSharp.Pdf.IO;
 
 namespace PDFToys.Core.Tests;
 
@@ -49,6 +50,16 @@ public abstract class PdfTestBase : IDisposable
             {
                 Thread.Sleep(50 * attempt);
             }
+        }
+    }
+
+    protected static void AssertPageCounts(IReadOnlyList<string> filePaths, IReadOnlyList<int> expectedCounts)
+    {
+        Assert.Equal(expectedCounts.Count, filePaths.Count);
+        for (var i = 0; i < filePaths.Count; i++)
+        {
+            using var document = PdfReader.Open(filePaths[i], PdfDocumentOpenMode.Import);
+            Assert.Equal(expectedCounts[i], document.PageCount);
         }
     }
 }
