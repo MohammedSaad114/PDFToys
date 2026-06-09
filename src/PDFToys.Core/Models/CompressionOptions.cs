@@ -2,7 +2,6 @@ namespace PDFToys.Core.Models;
 
 public enum CompressionLevel
 {
-    Fast,
     Normal,
     Maximum
 }
