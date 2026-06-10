@@ -5,7 +5,7 @@ using PdfSharp.Pdf.IO;
 
 namespace PDFToys.Core.Services;
 
-public sealed class SplitService : ISplitPdfService
+public sealed class SplitService : ServiceBase, ISplitPdfService
 {
     /// <summary>
     /// Splits the specified input PDF based on the provided configuration options.
@@ -15,11 +15,13 @@ public sealed class SplitService : ISplitPdfService
     /// <returns>An OperationResult indicating success or failure, containing the output directory path if successful.</returns>
     public OperationResult Split(PdfFile input, SplitOptions options)
     {
-        try
+        return ExecuteSafe(() =>
         {
-            if (!File.Exists(input.FilePath))
+            // Validation
+            var validationError = ValidateStandardInputs(input, options.OutputDirectory);
+            if (validationError != null)
             {
-                return new OperationResult(false, string.Empty, $"Input file not found: {input.FilePath}");
+                return validationError;
             }
 
             Directory.CreateDirectory(options.OutputDirectory);
@@ -69,10 +71,12 @@ public sealed class SplitService : ISplitPdfService
 
                 var isChunkComplete = pagesInCurrentPart == options.SplitEveryPages;
                 var isLastPage = pageIndex == inputDocument.PageCount - 1;
+
                 if (!isChunkComplete && !isLastPage)
                 {
                     continue;
                 }
+
                 var outputFileName = $"{originalFileName}_Part{partNumber}.pdf";
                 var outputPath = Path.Combine(options.OutputDirectory, outputFileName);
                 outputDocument.Save(outputPath);
@@ -81,11 +85,7 @@ public sealed class SplitService : ISplitPdfService
 
             outputDocument?.Dispose();
             return new OperationResult(true, Path.GetFullPath(options.OutputDirectory), string.Empty);
-        }
-        catch (Exception ex)
-        {
-            return new OperationResult(false, string.Empty, ex.Message);
-        }
+        });
     }
 
     private static OperationResult ValidateRanges(IReadOnlyList<SplitRange> ranges, int pageCount)

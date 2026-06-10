@@ -7,7 +7,7 @@ namespace PDFToys.Core.Services;
 
 // TODO: Implementing a secondary service in the future
 // to handle deep image downsampling, as PdfSharp cannot do this.
-public sealed class CompressionService : ICompressionService
+public sealed class CompressionService : ServiceBase, ICompressionService
 {
     /// <summary>
     /// Applies Flate encoding to the document's content streams to reduce file size. 
@@ -17,20 +17,16 @@ public sealed class CompressionService : ICompressionService
     /// <returns>An OperationResult containing the path to the structurally compressed file.</returns>
     public OperationResult Compress(PdfFile input, CompressionOptions options)
     {
-
-        try
+        return ExecuteSafe(() =>
         {
-            if (!File.Exists(input.FilePath))
+            // Validation
+            var validationError = ValidateStandardInputs(input, options.OutputDirectory);
+            if (validationError != null)
             {
-                return new OperationResult(false, string.Empty, $"Input file not found: {input.FilePath}");
+                return validationError;
             }
 
-            if (string.IsNullOrWhiteSpace(options.OutputDirectory))
-            {
-                return new OperationResult(false, string.Empty, "Output directory is required.");
-            }
-
-            Directory.CreateDirectory(options.OutputDirectory);
+            var outputPath = PrepareOutputEnvironment(input.FilePath, options.OutputDirectory, "Compressed");
 
             using var inputDocument = PdfReader.Open(input.FilePath, PdfDocumentOpenMode.Import);
             using var outputDocument = new PdfDocument();
@@ -48,15 +44,9 @@ public sealed class CompressionService : ICompressionService
                 outputDocument.AddPage(page);
             }
 
-            var originalFileName = Path.GetFileNameWithoutExtension(input.FilePath);
-            var outputPath = Path.Combine(options.OutputDirectory, $"{originalFileName}_Compressed.pdf");
             outputDocument.Save(outputPath);
 
             return new OperationResult(true, Path.GetFullPath(outputPath), string.Empty);
-        }
-        catch (Exception ex)
-        {
-            return new OperationResult(false, string.Empty, ex.Message);
-        }
+        });
     }
 }

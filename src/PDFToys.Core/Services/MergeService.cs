@@ -6,7 +6,7 @@ using System.Text;
 
 namespace PDFToys.Core.Services;
 
-public sealed class PdfSharpMergeService : IMergeService
+public sealed class PdfSharpMergeService : ServiceBase, IMergeService
 {
     // Required for PDFsharp to parse legacy Windows-1252 fonts in modern .NET (8+)
     static PdfSharpMergeService()
@@ -22,7 +22,7 @@ public sealed class PdfSharpMergeService : IMergeService
     /// <returns>An OperationResult indicating success or failure.</returns>
     public OperationResult Merge(PdfFile[] inputs, MergeOptions options)
     {
-        try
+        return ExecuteSafe(() =>
         {
             if (inputs is null || inputs.Length == 0)
             {
@@ -45,10 +45,6 @@ public sealed class PdfSharpMergeService : IMergeService
             outputDocument.Save(outputPath);
 
             return new OperationResult(true, outputPath, string.Empty);
-        }
-        catch (Exception ex)
-        {
-            return new OperationResult(false, string.Empty, ex.Message);
-        }
+        });
     }
 }
