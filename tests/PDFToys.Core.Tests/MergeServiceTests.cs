@@ -7,11 +7,11 @@ namespace PDFToys.Core.Tests;
 
 public sealed class MergeServiceTests : PdfTestBase
 {
-    private readonly PdfSharpMergeService _sut; // System Under Test
+    private readonly MergeService _sut; // System Under Test
 
     public MergeServiceTests()
     {
-        _sut = new PdfSharpMergeService();
+        _sut = new MergeService();
     }
 
     /* 

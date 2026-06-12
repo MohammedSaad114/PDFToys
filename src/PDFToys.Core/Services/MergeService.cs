@@ -6,10 +6,9 @@ using System.Text;
 
 namespace PDFToys.Core.Services;
 
-public sealed class PdfSharpMergeService : ServiceBase, IMergeService
+public sealed class MergeService : ServiceBase, IMergeService
 {
-    // Required for PDFsharp to parse legacy Windows-1252 fonts in modern .NET (8+)
-    static PdfSharpMergeService()
+    static MergeService()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
     }
@@ -17,21 +16,41 @@ public sealed class PdfSharpMergeService : ServiceBase, IMergeService
     /// <summary>
     /// Merges multiple PDF files into a single output document.
     /// </summary>
-    /// <param name="inputs">An array of PDF files to merge.</param>
+    /// <param name="inputs">The PDF files to merge.</param>
     /// <param name="options">Configuration for the output destination.</param>
     /// <returns>An OperationResult indicating success or failure.</returns>
-    public OperationResult Merge(PdfFile[] inputs, MergeOptions options)
+    public OperationResult Merge(IReadOnlyList<PdfFile> inputs, MergeOptions options)
     {
         return ExecuteSafe(() =>
         {
-            if (inputs is null || inputs.Length == 0)
+            var optionsError = ValidateOptionsNotNull(options);
+            if (optionsError != null)
             {
-                return new OperationResult(false, string.Empty, "At least one input file is required.");
+                return optionsError;
             }
+
+            var inputValidation = ValidateInputFiles(inputs);
+            if (inputValidation != null)
+            {
+                return inputValidation;
+            }
+
+            var outputDirValidation = ValidateOutputDirectory(options.OutputDirectory);
+            if (outputDirValidation != null)
+            {
+                return outputDirValidation;
+            }
+
+            if (string.IsNullOrWhiteSpace(options.OutputFileName))
+            {
+                return new OperationResult(false, string.Empty, "Output file name is required.");
+            }
+
+            Directory.CreateDirectory(options.OutputDirectory);
 
             using var outputDocument = new PdfDocument();
 
-            foreach (var file in inputs)
+            foreach (var file in inputs!)
             {
                 using var inputDocument = PdfReader.Open(file.FilePath, PdfDocumentOpenMode.Import);
 
