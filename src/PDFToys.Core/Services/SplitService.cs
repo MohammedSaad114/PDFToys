@@ -5,7 +5,7 @@ using PdfSharp.Pdf.IO;
 
 namespace PDFToys.Core.Services;
 
-public sealed class SplitService : ServiceBase, ISplitPdfService
+public sealed class SplitService : ServiceBase, ISplitService
 {
     /// <summary>
     /// Splits the specified input PDF based on the provided configuration options.
