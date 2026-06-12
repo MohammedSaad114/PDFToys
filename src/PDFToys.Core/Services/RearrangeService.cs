@@ -13,14 +13,19 @@ public sealed class RearrangeService : ServiceBase, IRearrangeService
     /// </summary>
     /// <param name="input">The source PDF file.</param>
     /// <param name="newPageOrder">An array of 0-based page indices representing the new order. (e.g., 0 = Page 1).</param>
-    /// <param name="outputDirectory">The destination folder for the rearranged PDF.</param>
+    /// <param name="options">The destination options for the rearranged PDF.</param>
     /// <returns>An OperationResult containing the path to the rearranged file.</returns>
-    public OperationResult Rearrange(PdfFile input, int[] newPageOrder, string outputDirectory)
+    public OperationResult Rearrange(PdfFile input, int[] newPageOrder, RearrangeOptions options)
     {
         return ExecuteSafe(() =>
         {
-            // Validation 
-            var validationError = ValidateStandardInputs(input, outputDirectory);
+            var optionsError = ValidateOptionsNotNull(options);
+            if (optionsError != null)
+            {
+                return optionsError;
+            }
+
+            var validationError = ValidateStandardInputs(input, options!.OutputDirectory);
             if (validationError != null)
             {
                 return validationError;
@@ -31,7 +36,7 @@ public sealed class RearrangeService : ServiceBase, IRearrangeService
                 return new OperationResult(false, string.Empty, "newPageOrder must contain at least one page index.");
             }
 
-            var outputPath = PrepareOutputEnvironment(input.FilePath, outputDirectory, "Rearranged");
+            var outputPath = PrepareOutputEnvironment(input.FilePath, options.OutputDirectory, "Rearranged");
 
             using var inputDocument = PdfReader.Open(input.FilePath, PdfDocumentOpenMode.Import);
             using var outputDocument = new PdfDocument();

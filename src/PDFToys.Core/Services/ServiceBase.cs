@@ -19,22 +19,87 @@ public abstract class ServiceBase
         }
     }
 
+    protected static OperationResult? ValidateOptionsNotNull<T>(T? options) where T : class
+    {
+        if (options is null)
+        {
+            return new OperationResult(false, string.Empty, "Options are required.");
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Performs standard validation for the input file and output directory.
     /// </summary>
     protected static OperationResult? ValidateStandardInputs(PdfFile input, string outputDirectory)
     {
-        if (input is null || !File.Exists(input.FilePath))
+        if (input is null || string.IsNullOrWhiteSpace(input.FilePath))
         {
-            return new OperationResult(false, string.Empty, $"Input file not found: {input?.FilePath}");
+            return new OperationResult(false, string.Empty, "Input PDF path is required.");
         }
 
+        if (!File.Exists(input.FilePath))
+        {
+            return new OperationResult(false, string.Empty, $"Input file not found: {input.FilePath}");
+        }
+
+        var extensionError = ValidatePdfExtension(input.FilePath);
+        if (extensionError != null)
+        {
+            return extensionError;
+        }
+
+        return ValidateOutputDirectory(outputDirectory);
+    }
+
+    protected static OperationResult? ValidateOutputDirectory(string outputDirectory)
+    {
         if (string.IsNullOrWhiteSpace(outputDirectory))
         {
             return new OperationResult(false, string.Empty, "Output directory is required.");
         }
 
-        return null; // Null indicates validation passed
+        return null;
+    }
+
+    protected static OperationResult? ValidatePdfExtension(string filePath)
+    {
+        if (!Path.GetExtension(filePath).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return new OperationResult(false, string.Empty, "Input file must be a PDF.");
+        }
+
+        return null;
+    }
+
+    protected static OperationResult? ValidateInputFiles(IReadOnlyList<PdfFile> inputs)
+    {
+        if (inputs is null || inputs.Count == 0)
+        {
+            return new OperationResult(false, string.Empty, "At least one input PDF is required.");
+        }
+
+        foreach (var input in inputs)
+        {
+            if (input is null || string.IsNullOrWhiteSpace(input.FilePath))
+            {
+                return new OperationResult(false, string.Empty, "Input PDF path is required.");
+            }
+
+            if (!File.Exists(input.FilePath))
+            {
+                return new OperationResult(false, string.Empty, $"Input PDF not found: {input.FilePath}");
+            }
+
+            var extensionError = ValidatePdfExtension(input.FilePath);
+            if (extensionError != null)
+            {
+                return extensionError;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
