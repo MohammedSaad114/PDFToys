@@ -1,3 +1,5 @@
+using PdfSharp.Pdf;
+using PdfSharp.Pdf.IO;
 using PDFToys.Core.Models;
 using PDFToys.Core.Services;
 
@@ -18,10 +20,39 @@ public sealed class RearrangeServiceTests : PdfTestBase
         var inputPath = Path.Combine(TempDirectory, "pages.pdf");
         CreatePdf(inputPath, 3);
 
-        var result = _service.Rearrange(new PdfFile(inputPath), [0, 1, 2], null!);
+        var result = _service.Rearrange(
+            new PdfFile(inputPath),
+            [new PageArrangementItem(0), new PageArrangementItem(1), new PageArrangementItem(2)],
+            null!);
 
         Assert.False(result.IsSuccess);
         Assert.Contains("Options are required", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Rearrange_WithNullPages_ReturnsFailure()
+    {
+        var inputPath = Path.Combine(TempDirectory, "pages.pdf");
+        CreatePdf(inputPath, 3);
+        var options = new RearrangeOptions(TempDirectory);
+
+        var result = _service.Rearrange(new PdfFile(inputPath), null!, options);
+
+        Assert.False(result.IsSuccess);
+        Assert.Contains("At least one page must be included", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Rearrange_WithEmptyPages_ReturnsFailure()
+    {
+        var inputPath = Path.Combine(TempDirectory, "pages.pdf");
+        CreatePdf(inputPath, 3);
+        var options = new RearrangeOptions(TempDirectory);
+
+        var result = _service.Rearrange(new PdfFile(inputPath), [], options);
+
+        Assert.False(result.IsSuccess);
+        Assert.Contains("At least one page must be included", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -31,7 +62,10 @@ public sealed class RearrangeServiceTests : PdfTestBase
         CreatePdf(inputPath, 3);
         var options = new RearrangeOptions(TempDirectory);
 
-        var result = _service.Rearrange(new PdfFile(inputPath), [2, 0, 1], options);
+        var result = _service.Rearrange(
+            new PdfFile(inputPath),
+            [new PageArrangementItem(2), new PageArrangementItem(0), new PageArrangementItem(1)],
+            options);
 
         Assert.True(result.IsSuccess, result.ErrorMessage);
         Assert.True(File.Exists(result.OutputPath));
@@ -45,7 +79,10 @@ public sealed class RearrangeServiceTests : PdfTestBase
         CreatePdf(inputPath, 2);
         var options = new RearrangeOptions(TempDirectory);
 
-        var result = _service.Rearrange(new PdfFile(inputPath), [0, 2], options);
+        var result = _service.Rearrange(
+            new PdfFile(inputPath),
+            [new PageArrangementItem(0), new PageArrangementItem(2)],
+            options);
 
         Assert.False(result.IsSuccess);
         Assert.Contains("out of range", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
@@ -57,8 +94,45 @@ public sealed class RearrangeServiceTests : PdfTestBase
         var missingPath = Path.Combine(TempDirectory, "ghost.pdf");
         var options = new RearrangeOptions(TempDirectory);
 
-        var result = _service.Rearrange(new PdfFile(missingPath), [0], options);
+        var result = _service.Rearrange(new PdfFile(missingPath), [new PageArrangementItem(0)], options);
 
         Assert.False(result.IsSuccess);
+    }
+
+    [Fact]
+    public void Rearrange_WithRotation_AppliesRotation()
+    {
+        var inputPath = Path.Combine(TempDirectory, "rotate.pdf");
+        CreatePdf(inputPath, 2);
+        var options = new RearrangeOptions(TempDirectory);
+
+        var result = _service.Rearrange(
+            new PdfFile(inputPath),
+            [new PageArrangementItem(0, 90), new PageArrangementItem(1, 0)],
+            options);
+
+        Assert.True(result.IsSuccess, result.ErrorMessage);
+        Assert.True(File.Exists(result.OutputPath));
+
+        using var outputDocument = PdfReader.Open(result.OutputPath, PdfDocumentOpenMode.Import);
+        Assert.Equal(2, outputDocument.PageCount);
+    }
+
+    [Fact]
+    public void Rearrange_DuplicatePageIndices_Allowed()
+    {
+        var inputPath = Path.Combine(TempDirectory, "duplicate.pdf");
+        CreatePdf(inputPath, 2);
+        var options = new RearrangeOptions(TempDirectory);
+
+        var result = _service.Rearrange(
+            new PdfFile(inputPath),
+            [new PageArrangementItem(0), new PageArrangementItem(0)],
+            options);
+
+        Assert.True(result.IsSuccess, result.ErrorMessage);
+
+        using var outputDocument = PdfReader.Open(result.OutputPath, PdfDocumentOpenMode.Import);
+        Assert.Equal(2, outputDocument.PageCount);
     }
 }

@@ -4,5 +4,5 @@ namespace PDFToys.Core.Contracts;
 
 public interface IRearrangeService
 {
-    OperationResult Rearrange(PdfFile input, int[] newPageOrder, RearrangeOptions options);
+    OperationResult Rearrange(PdfFile input, IReadOnlyList<PageArrangementItem> pages, RearrangeOptions options);
 }
