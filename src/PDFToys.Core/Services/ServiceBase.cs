@@ -53,6 +53,29 @@ public abstract class ServiceBase
         return ValidateOutputDirectory(outputDirectory);
     }
 
+    /// <summary>
+    /// Performs standard validation for the input file (String) and output directory.
+    /// </summary>
+    protected static OperationResult? ValidateForeignInput(string inputFilePath, string outputDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(inputFilePath))
+        {
+            return new OperationResult(false, string.Empty, "Input file path is required.");
+        }
+
+        if (!File.Exists(inputFilePath))
+        {
+            return new OperationResult(false, string.Empty, $"Input file not found: {inputFilePath}");
+        }
+
+        if (string.IsNullOrWhiteSpace(outputDirectory))
+        {
+            return new OperationResult(false, string.Empty, "Output directory is required.");
+        }
+
+        return null;
+    }
+
     protected static OperationResult? ValidateOutputDirectory(string outputDirectory)
     {
         if (string.IsNullOrWhiteSpace(outputDirectory))
