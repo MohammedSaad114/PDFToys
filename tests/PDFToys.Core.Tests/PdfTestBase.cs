@@ -1,5 +1,7 @@
+using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
+using SkiaSharp;
 
 namespace PDFToys.Core.Tests;
 
@@ -21,6 +23,27 @@ public abstract class PdfTestBase : IDisposable
         for (var i = 0; i < pageCount; i++)
         {
             document.AddPage();
+        }
+
+        document.Save(fullPath);
+        return fullPath;
+    }
+
+    protected string CreatePdfWithEmbeddedImage(string fileName, int width, int height)
+    {
+        var fullPath = Path.Combine(TempDirectory, fileName);
+        var imagePath = Path.Combine(TempDirectory, $"{Path.GetFileNameWithoutExtension(fileName)}-source.png");
+        CreatePng(imagePath, width, height);
+
+        using var document = new PdfDocument();
+        using var image = XImage.FromFile(imagePath);
+        var page = document.AddPage();
+        page.Width = width;
+        page.Height = height;
+
+        using (var gfx = XGraphics.FromPdfPage(page))
+        {
+            gfx.DrawImage(image, 0, 0, width, height);
         }
 
         document.Save(fullPath);
@@ -61,5 +84,28 @@ public abstract class PdfTestBase : IDisposable
             using var document = PdfReader.Open(filePaths[i], PdfDocumentOpenMode.Import);
             Assert.Equal(expectedCounts[i], document.PageCount);
         }
+    }
+
+    private static void CreatePng(string path, int width, int height)
+    {
+        using var bitmap = new SKBitmap(width, height);
+        using var canvas = new SKCanvas(bitmap);
+        canvas.Clear(SKColors.Coral);
+
+        using var paint = new SKPaint { Color = SKColors.DarkBlue, StrokeWidth = 2 };
+        for (var x = 0; x < width; x += 10)
+        {
+            canvas.DrawLine(x, 0, x, height, paint);
+        }
+
+        for (var y = 0; y < height; y += 10)
+        {
+            canvas.DrawLine(0, y, width, y, paint);
+        }
+
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Create(path);
+        data!.SaveTo(stream);
     }
 }

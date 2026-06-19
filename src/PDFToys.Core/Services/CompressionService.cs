@@ -1,26 +1,34 @@
 using PDFToys.Core.Contracts;
 using PDFToys.Core.Models;
 using PdfSharp.Pdf;
+using PdfSharp.Pdf.Advanced;
 using PdfSharp.Pdf.IO;
 
 namespace PDFToys.Core.Services;
 
-// TODO: Implementing a secondary service in the future
-// to handle deep image downsampling, as PdfSharp cannot do this.
 public sealed class CompressionService : ServiceBase, ICompressionService
 {
-    /// <summary>
-    /// Applies Flate encoding to the document's content streams to reduce file size. 
-    /// </summary>
-    /// <param name="input">The source PDF file to compress.</param>
-    /// <param name="options">The compression options, including output directory and Flate encoding quality.</param>
-    /// <returns>An OperationResult containing the path to the structurally compressed file.</returns>
+    private const int NormalJpegQuality = 60;
+    private const int MaximumJpegQuality = 30;
+
+    private readonly IImageCompressor _imageCompressor;
+
+    public CompressionService(IImageCompressor imageCompressor)
+    {
+        _imageCompressor = imageCompressor;
+    }
+
     public OperationResult Compress(PdfFile input, CompressionOptions options)
     {
         return ExecuteSafe(() =>
         {
-            // Validation
-            var validationError = ValidateStandardInputs(input, options.OutputDirectory);
+            var optionsError = ValidateOptionsNotNull(options);
+            if (optionsError != null)
+            {
+                return optionsError;
+            }
+
+            var validationError = ValidateStandardInputs(input, options!.OutputDirectory);
             if (validationError != null)
             {
                 return validationError;
@@ -28,25 +36,93 @@ public sealed class CompressionService : ServiceBase, ICompressionService
 
             var outputPath = PrepareOutputEnvironment(input.FilePath, options.OutputDirectory, "Compressed");
 
-            using var inputDocument = PdfReader.Open(input.FilePath, PdfDocumentOpenMode.Import);
-            using var outputDocument = new PdfDocument();
+            // Modify is required here to replace embedded image streams in place
+            using var document = PdfReader.Open(input.FilePath, PdfDocumentOpenMode.Modify);
 
-            outputDocument.Options.CompressContentStreams = true;
-            outputDocument.Options.NoCompression = false;
-            outputDocument.Options.FlateEncodeMode = options.Quality switch
+            for (var i = 0; i < document.Pages.Count; i++)
+            {
+                var page = document.Pages[i];
+                var resources = page.Elements.GetDictionary("/Resources");
+                if (resources is null)
+                {
+                    continue;
+                }
+
+                var xObjects = resources.Elements.GetDictionary("/XObject");
+                if (xObjects is null)
+                {
+                    continue;
+                }
+
+                var items = xObjects.Elements.Values.OfType<PdfReference>().ToList();
+                foreach (var item in items)
+                {
+                    if (item.Value is not PdfDictionary xObjectDict)
+                    {
+                        continue;
+                    }
+
+                    if (xObjectDict.Elements.GetString("/Subtype") != "/Image")
+                    {
+                        continue;
+                    }
+
+                    var originalBytes = xObjectDict.Stream.Value;
+                    var qualityToUse = GetJpegQuality(options.Level);
+                    var compressedImage = _imageCompressor.Compress(originalBytes, qualityToUse);
+
+                    if (compressedImage is not null)
+                    {
+                        ApplyCompressedImage(xObjectDict, compressedImage, originalBytes);
+                    }
+                }
+            }
+
+            document.Options.CompressContentStreams = true;
+            document.Options.NoCompression = false;
+            document.Options.FlateEncodeMode = options.Level switch
             {
                 CompressionLevel.Maximum => PdfFlateEncodeMode.BestCompression,
                 _ => PdfFlateEncodeMode.Default
             };
 
-            foreach (var page in inputDocument.Pages)
-            {
-                outputDocument.AddPage(page);
-            }
+            document.Save(outputPath);
 
-            outputDocument.Save(outputPath);
+            var inputSize = new FileInfo(input.FilePath).Length;
+            if (new FileInfo(outputPath).Length > inputSize)
+            {
+                File.Copy(input.FilePath, outputPath, overwrite: true);
+            }
 
             return new OperationResult(true, Path.GetFullPath(outputPath), string.Empty);
         });
+    }
+
+    private static int GetJpegQuality(CompressionLevel level) =>
+        level switch
+        {
+            CompressionLevel.Maximum => MaximumJpegQuality,
+            _ => NormalJpegQuality
+        };
+
+    private static void ApplyCompressedImage(
+        PdfDictionary xObjectDict,
+        CompressedImageResult result,
+        byte[] originalBytes)
+    {
+        if (result.Bytes.Length >= originalBytes.Length)
+        {
+            return;
+        }
+
+        xObjectDict.Stream.Value = result.Bytes;
+        xObjectDict.Elements.SetName("/Filter", "/DCTDecode");
+        xObjectDict.Elements.SetInteger("/Length", result.Bytes.Length);
+        xObjectDict.Elements.SetInteger("/Width", result.Width);
+        xObjectDict.Elements.SetInteger("/Height", result.Height);
+        xObjectDict.Elements.SetInteger("/BitsPerComponent", 8);
+        xObjectDict.Elements.SetName("/ColorSpace", "/DeviceRGB");
+        xObjectDict.Elements.Remove("/DecodeParms");
+        xObjectDict.Elements.Remove("/SMask");
     }
 }

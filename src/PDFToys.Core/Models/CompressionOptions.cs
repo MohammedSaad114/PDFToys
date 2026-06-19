@@ -6,4 +6,4 @@ public enum CompressionLevel
     Maximum
 }
 
-public sealed record CompressionOptions(string OutputDirectory, CompressionLevel Quality);
+public sealed record CompressionOptions(string OutputDirectory, CompressionLevel Level);
