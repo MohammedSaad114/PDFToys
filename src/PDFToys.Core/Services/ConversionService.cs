@@ -32,7 +32,6 @@ public sealed class ConversionService : ServiceBase, IConversionService
                 return new OperationResult(false, string.Empty, $"Unsupported file type: {extension}");
             }
 
-            // 4. Execute the worker!
             return strategy.Execute(inputFilePath, options, outputFilePath);
         });
     }
