@@ -8,6 +8,29 @@ namespace PDFToys.Core.Services;
 
 public sealed class RearrangeService : ServiceBase, IRearrangeService
 {
+    public int? TryGetPageCount(PdfFile input)
+    {
+        if (input is null || string.IsNullOrWhiteSpace(input.FilePath) || !File.Exists(input.FilePath))
+        {
+            return null;
+        }
+
+        if (!Path.GetExtension(input.FilePath).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = PdfReader.Open(input.FilePath, PdfDocumentOpenMode.Import);
+            return document.PageCount;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>
     /// Creates a new PDF from the requested page order and optional per-page rotations.
     /// </summary>

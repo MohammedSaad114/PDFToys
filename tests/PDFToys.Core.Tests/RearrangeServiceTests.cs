@@ -135,4 +135,38 @@ public sealed class RearrangeServiceTests : PdfTestBase
         using var outputDocument = PdfReader.Open(result.OutputPath, PdfDocumentOpenMode.Import);
         Assert.Equal(2, outputDocument.PageCount);
     }
+
+    [Fact]
+    public void TryGetPageCount_ValidPdf_ReturnsPageCount()
+    {
+        var inputPath = Path.Combine(TempDirectory, "count.pdf");
+        CreatePdf(inputPath, 3);
+
+        var pageCount = _service.TryGetPageCount(new PdfFile(inputPath));
+
+        Assert.Equal(3, pageCount);
+    }
+
+    [Fact]
+    public void TryGetPageCount_MissingFile_ReturnsNull()
+    {
+        var missingPath = Path.Combine(TempDirectory, "missing.pdf");
+
+        Assert.Null(_service.TryGetPageCount(new PdfFile(missingPath)));
+    }
+
+    [Fact]
+    public void TryGetPageCount_NonPdfExtension_ReturnsNull()
+    {
+        var textPath = Path.Combine(TempDirectory, "notes.txt");
+        File.WriteAllText(textPath, "not a pdf");
+
+        Assert.Null(_service.TryGetPageCount(new PdfFile(textPath)));
+    }
+
+    [Fact]
+    public void TryGetPageCount_NullOrEmptyPath_ReturnsNull()
+    {
+        Assert.Null(_service.TryGetPageCount(new PdfFile(string.Empty)));
+    }
 }
