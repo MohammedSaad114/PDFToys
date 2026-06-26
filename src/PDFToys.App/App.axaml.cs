@@ -1,32 +1,44 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core;
-using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using Microsoft.Extensions.DependencyInjection;
 using PDFToys.App.ViewModels;
-using PDFToys.App.Views;
-using System.Linq;
+using System;
 
-namespace PDFToys.App
+namespace PDFToys.App;
+
+public partial class App : Application
 {
-    public partial class App : Application
+    public static IServiceProvider Services { get; private set; } = null!;
+
+    public App() { }
+
+    public override void Initialize()
     {
-        public override void Initialize()
-        {
-            AvaloniaXamlLoader.Load(this);
-        }
+        AvaloniaXamlLoader.Load(this);
+    }
 
-        public override void OnFrameworkInitializationCompleted()
+    public override void OnFrameworkInitializationCompleted()
+    {
+        var services = new ServiceCollection();
+        services.AddTransient<MainViewModel>();
+
+        Services = services.BuildServiceProvider();
+
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            var args = desktop.Args ?? [];
+
+
+            var mainViewModel = new MainViewModel(Services);
+
+            desktop.MainWindow = new MainWindow
             {
-                desktop.MainWindow = new MainWindow
-                {
-                    DataContext = new MainWindowViewModel(),
-                };
-            }
+                DataContext = mainViewModel
+            };
 
-            base.OnFrameworkInitializationCompleted();
         }
+
+        base.OnFrameworkInitializationCompleted();
     }
 }

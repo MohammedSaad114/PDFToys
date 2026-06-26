@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PDFToys.App.ViewModels"
+             x:DataType="vm:HomeViewModel"
+             x:Class="PDFToys.App.Views.HomeView">
+    <Grid HorizontalAlignment="Center"
+          VerticalAlignment="Center">
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+            <TextBlock Text="PDFToys"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       Margin="0,0,0,8"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center" />
+            <TextBlock Text="Windows 10+ required."
+                       FontSize="12"
+                       Foreground="DarkGray"
+                       Margin="0,0,0,12"
+                       HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</UserControl>
