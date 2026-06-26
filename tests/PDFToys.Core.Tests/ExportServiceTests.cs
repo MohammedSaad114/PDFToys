@@ -96,6 +96,21 @@ public sealed class ExportServiceTests : PdfTestBase
     }
 
     [Fact]
+    public void Export_Jpeg_CreatesImageFiles()
+    {
+        var inputPath = Path.Combine(TempDirectory, "export-jpeg.pdf");
+        CreatePdf(inputPath, 2);
+        var options = new ExportOptions(TempDirectory, PdfExportFormat.Jpeg);
+
+        var result = _service.Export([new PdfFile(inputPath)], options);
+
+        Assert.True(result.IsSuccess, result.ErrorMessage);
+        Assert.True(Directory.Exists(result.OutputPath));
+        var images = Directory.GetFiles(result.OutputPath, "page_*.jpeg");
+        Assert.Equal(2, images.Length);
+    }
+
+    [Fact]
     public void Export_Markdown_CreatesMarkdownFiles()
     {
         var inputPath = Path.Combine(TempDirectory, "export-md.pdf");

@@ -6,7 +6,7 @@ namespace PDFToys.Core.Services.ExportStrategies;
 public sealed class ImageExportStrategy : ExportStrategyBase
 {
     public override bool CanHandle(PdfExportFormat format) =>
-        format is PdfExportFormat.Png or PdfExportFormat.Jpg;
+        format is PdfExportFormat.Png or PdfExportFormat.Jpg or PdfExportFormat.Jpeg;
 
     public override OperationResult Execute(IReadOnlyList<PdfFile> inputs, ExportOptions options, string outputFolder)
     {
@@ -14,6 +14,7 @@ public sealed class ImageExportStrategy : ExportStrategyBase
         {
             PdfExportFormat.Png => (SKEncodedImageFormat.Png, "png"),
             PdfExportFormat.Jpg => (SKEncodedImageFormat.Jpeg, "jpg"),
+            PdfExportFormat.Jpeg => (SKEncodedImageFormat.Jpeg, "jpeg"),
             _ => throw new InvalidOperationException($"Unexpected format: {options.Format}")
         };
 
