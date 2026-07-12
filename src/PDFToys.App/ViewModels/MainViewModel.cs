@@ -5,7 +5,6 @@ namespace PDFToys.App.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly StartupOperationRouter _startupRouter;
     private ViewModelBase _currentPage = null!;
     private readonly string? _startupWorkspace;
 

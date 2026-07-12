@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
+using PDFToys.App.Services;
 using PDFToys.App.ViewModels;
 using System;
 
@@ -21,6 +22,7 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         var services = new ServiceCollection();
+        services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
         services.AddTransient<MainViewModel>();
 
         Services = services.BuildServiceProvider();
