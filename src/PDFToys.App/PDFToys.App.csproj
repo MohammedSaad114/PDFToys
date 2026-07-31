@@ -33,5 +33,8 @@
     <Compile Update="Views\MergeView.axaml.cs">
       <DependentUpon>MergeView.axaml</DependentUpon>
     </Compile>
+    <Compile Update="Views\SplitView.axaml.cs">
+      <DependentUpon>SplitView.axaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>
