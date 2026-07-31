@@ -10,7 +10,6 @@
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
-    <Folder Include="Views\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,5 +27,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PDFToys.Core\PDFToys.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\MergeView.axaml.cs">
+      <DependentUpon>MergeView.axaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>
