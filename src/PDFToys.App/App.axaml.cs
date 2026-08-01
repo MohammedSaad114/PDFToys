@@ -22,6 +22,7 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         var services = new ServiceCollection();
+        services.AddPdfToysCore();
         services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
         services.AddTransient<MainViewModel>();
 
@@ -32,7 +33,7 @@ public partial class App : Application
             var args = desktop.Args ?? [];
 
 
-            var mainViewModel = new MainViewModel(Services);
+            var mainViewModel = Services.GetRequiredService<MainViewModel>();
 
             desktop.MainWindow = new MainWindow
             {
