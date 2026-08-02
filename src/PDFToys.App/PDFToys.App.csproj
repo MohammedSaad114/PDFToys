@@ -35,5 +35,8 @@
     <Compile Update="Views\SplitView.axaml.cs">
       <DependentUpon>SplitView.axaml</DependentUpon>
     </Compile>
+    <Compile Update="Views\OrganizePagesView.axaml.cs">
+      <DependentUpon>OrganizePagesView.axaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>
