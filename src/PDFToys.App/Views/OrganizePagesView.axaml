@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PDFToys.App.ViewModels"
+             x:DataType="vm:OrganizePagesViewModel"
+             x:Class="PDFToys.App.Views.OrganizePagesView">
+	<Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto"
+          RowSpacing="12"
+          Margin="20">
+		<Button Grid.Row="0"
+                Content="← Back to Hub"
+                Command="{Binding GoBackCommand}"
+                Background="Transparent"
+                Foreground="LightSkyBlue"
+                HorizontalAlignment="Left" />
+
+		<StackPanel Grid.Row="1" Spacing="8">
+			<TextBlock Text="Organize Pages"
+                       FontSize="18"
+                       FontWeight="SemiBold" />
+			<StackPanel Orientation="Horizontal" Spacing="8">
+				<Button Content="Select PDF"
+                        Command="{Binding SelectPdfCommand}" />
+				<Button Content="Save As..."
+                        Command="{Binding ChooseOutputCommand}" />
+			</StackPanel>
+			<TextBlock Text="{Binding SelectedFileLabel}"
+                       TextWrapping="Wrap"
+                       Foreground="DarkGray"
+                       FontSize="12" />
+			<TextBlock Text="{Binding SavedAsLabel}"
+                       TextWrapping="Wrap"
+                       Foreground="DarkGray"
+                       FontSize="12" />
+		</StackPanel>
+
+		<StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    Spacing="8">
+			<Button Content="Move Up" Command="{Binding MoveUpCommand}" />
+			<Button Content="Move Down" Command="{Binding MoveDownCommand}" />
+			<Button Content="Rotate Left" Command="{Binding RotateLeftCommand}" />
+			<Button Content="Rotate Right" Command="{Binding RotateRightCommand}" />
+			<Button Content="View Page" Command="{Binding ViewPageCommand}" />
+			<Button Content="Delete" Command="{Binding DeleteCommand}" />
+			<Button Content="Restore" Command="{Binding RestoreCommand}" />
+			<Button Content="Reset" Command="{Binding ResetCommand}" />
+		</StackPanel>
+
+		<ListBox Grid.Row="3"
+                 ItemsSource="{Binding Pages}"
+                 SelectedItem="{Binding SelectedPage}"
+                 MinHeight="180">
+			<ListBox.ItemTemplate>
+				<DataTemplate DataType="vm:OrganizePageItemViewModel">
+					<Grid ColumnDefinitions="40,90,80,70,*">
+						<TextBlock Grid.Column="0" Text="{Binding DisplayPosition}" />
+						<TextBlock Grid.Column="1" Text="{Binding SourcePageNumber, StringFormat=Page {0}}" />
+						<TextBlock Grid.Column="2" Text="{Binding RotationLabel}" />
+						<TextBlock Grid.Column="3" Text="{Binding IncludedLabel}" />
+					</Grid>
+				</DataTemplate>
+			</ListBox.ItemTemplate>
+		</ListBox>
+
+		<StackPanel Grid.Row="4"
+                    Orientation="Horizontal"
+                    Spacing="8">
+			<Button Content="Save Organized PDF"
+                    Command="{Binding SaveCommand}" />
+		</StackPanel>
+
+		<TextBlock Grid.Row="5"
+                   Text="{Binding StatusMessage}"
+                   TextWrapping="Wrap"
+                   Foreground="LightGreen" />
+	</Grid>
+</UserControl>
