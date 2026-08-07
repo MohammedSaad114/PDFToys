@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace PDFToys.App.ViewModels;
-public sealed record ConvertExportFileItem(string FullPath, string FileName);
+
 public sealed class ConvertExportViewModel : ViewModelBase
 {
     private readonly IConversionService _conversionService;
@@ -61,7 +61,7 @@ public sealed class ConvertExportViewModel : ViewModelBase
         ExecuteCommand = new AsyncDelegateCommand(ExecuteAsync, () => !IsBusy);
     }
 
-    public ObservableCollection<ConvertExportFileItem> SelectedFiles { get; }
+    public ObservableCollection<PdfFileItem> SelectedFiles { get; }
 
     public IReadOnlyList<ConvertExportOperationItem> OperationItems { get; }
 
@@ -152,12 +152,12 @@ public sealed class ConvertExportViewModel : ViewModelBase
             return;
         }
 
-        SelectedFiles.Add(new ConvertExportFileItem(path, Path.GetFileName(path)));
+        SelectedFiles.Add(new PdfFileItem(path, Path.GetFileName(path)));
     }
 
     private void RemoveFile(object? parameter)
     {
-        if (parameter is not ConvertExportFileItem fileItem)
+        if (parameter is not PdfFileItem fileItem)
         {
             return;
         }

@@ -1,3 +1,4 @@
+using PDFToys.App.Models;
 using PDFToys.App.Services;
 using PDFToys.App.ViewModels;
 using PDFToys.Core.Contracts;
@@ -17,29 +18,31 @@ public sealed class UnlockViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteUnlockAsync_WithoutFiles_ShowsValidationMessage()
+    public void ExecuteUnlockCommand_WithoutFiles_ShowsValidationMessage()
     {
         var service = new ProtectServiceStub(CreateSuccessfulResult);
         var viewModel = CreateViewModel(service);
         viewModel.Password = "secret";
 
-        await viewModel.ExecuteUnlockAsync();
+        viewModel.ExecuteUnlockCommand.Execute(null);
 
         Assert.Equal("Please select PDF files first.", viewModel.StatusMessage);
         Assert.Empty(service.UnlockCalls);
+        Assert.False(viewModel.IsBusy);
     }
 
     [Fact]
-    public async Task ExecuteUnlockAsync_WithoutPassword_ShowsValidationMessage()
+    public void ExecuteUnlockCommand_WithoutPassword_ShowsValidationMessage()
     {
         var inputPath = CreateInput("password-required.pdf");
         var service = new ProtectServiceStub(CreateSuccessfulResult);
         var viewModel = CreateViewModel(service, [inputPath]);
 
-        await viewModel.ExecuteUnlockAsync();
+        viewModel.ExecuteUnlockCommand.Execute(null);
 
         Assert.Equal("Password is required.", viewModel.StatusMessage);
         Assert.Empty(service.UnlockCalls);
+        Assert.False(viewModel.IsBusy);
     }
 
     [Fact]
@@ -52,30 +55,47 @@ public sealed class UnlockViewModelTests : IDisposable
 
         var selectedFile = Assert.Single(viewModel.SelectedFiles);
         Assert.Equal(inputPath, selectedFile.FullPath);
-        Assert.IsType<UnlockFileItem>(selectedFile);
+        Assert.IsType<PdfFileItem>(selectedFile);
     }
 
     [Fact]
-    public async Task ExecuteUnlockAsync_WithValidInput_ProducesCopyAndClearsPassword()
+    public void Constructor_LoadsDefaultOutputModeFromSettings()
+    {
+        var service = new ProtectServiceStub(CreateSuccessfulResult);
+        var settingsStore = new UserSettingsStoreStub(new UserSettings
+        {
+            DefaultPdfOutputMode = nameof(PdfOutputMode.ReplaceOriginal)
+        });
+
+        var viewModel = CreateViewModel(service, settingsStore: settingsStore);
+
+        Assert.Equal(PdfOutputMode.ReplaceOriginal, viewModel.OutputMode.SelectedOutputMode);
+        Assert.Equal(1, settingsStore.LoadCalls);
+    }
+
+    [Fact]
+    public void ExecuteUnlockCommand_WithValidInput_ProducesCopyAndKeepsPassword()
     {
         var inputPath = CreateInput("protected.pdf");
+        var expectedOutputPath = Path.Combine(_tempDirectory, "protected_Unlocked.pdf");
         var service = new ProtectServiceStub(CreateSuccessfulResult);
         var viewModel = CreateViewModel(service, [inputPath]);
         viewModel.Password = "secret";
 
-        await viewModel.ExecuteUnlockAsync();
+        viewModel.ExecuteUnlockCommand.Execute(null);
 
         var call = Assert.Single(service.UnlockCalls);
         Assert.Equal(inputPath, call.Input.FilePath);
         Assert.Equal("secret", call.Options.Password);
         Assert.Equal(Path.GetDirectoryName(inputPath), call.Options.OutputDirectory);
-        Assert.StartsWith("Unlock complete:", viewModel.StatusMessage);
-        Assert.Equal(string.Empty, viewModel.Password);
+        Assert.True(File.Exists(expectedOutputPath));
+        Assert.Equal("Unlocked 1/1 files successfully!", viewModel.StatusMessage);
+        Assert.Equal("secret", viewModel.Password);
         Assert.False(viewModel.IsBusy);
     }
 
     [Fact]
-    public async Task ExecuteUnlockAsync_WithPartialFailure_ReportsFailureAndKeepsPassword()
+    public void ExecuteUnlockCommand_WithPartialFailure_ReportsFailureAndKeepsPassword()
     {
         var successfulInput = CreateInput("successful.pdf");
         var failedInput = CreateInput("failed.pdf");
@@ -86,7 +106,7 @@ public sealed class UnlockViewModelTests : IDisposable
         var viewModel = CreateViewModel(service, [successfulInput, failedInput]);
         viewModel.Password = "secret";
 
-        await viewModel.ExecuteUnlockAsync();
+        viewModel.ExecuteUnlockCommand.Execute(null);
 
         Assert.Equal(2, service.UnlockCalls.Count);
         Assert.Contains("Unlocked 1/2 files successfully", viewModel.StatusMessage);
@@ -96,7 +116,7 @@ public sealed class UnlockViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteUnlockAsync_WhenOutputIsMissing_ReportsFailure()
+    public void ExecuteUnlockCommand_WhenReplacementOutputIsMissing_ReportsFailure()
     {
         var inputPath = CreateInput("missing-output.pdf");
         var missingOutputPath = Path.Combine(_tempDirectory, "does-not-exist.pdf");
@@ -104,15 +124,37 @@ public sealed class UnlockViewModelTests : IDisposable
             new OperationResult(true, missingOutputPath, string.Empty));
         var viewModel = CreateViewModel(service, [inputPath]);
         viewModel.Password = "secret";
+        viewModel.OutputMode.ApplyMode(PdfOutputMode.ReplaceOriginal);
 
-        await viewModel.ExecuteUnlockAsync();
+        viewModel.ExecuteUnlockCommand.Execute(null);
 
-        Assert.Contains("without producing an output file", viewModel.StatusMessage);
+        Assert.Contains("Replaced 0/1 files successfully", viewModel.StatusMessage);
+        Assert.Contains("Could not replace original file.", viewModel.StatusMessage);
         Assert.Equal("secret", viewModel.Password);
+        Assert.True(File.Exists(inputPath));
     }
 
     [Fact]
-    public async Task ExecuteUnlockAsync_WhileRunning_DisablesInteractiveCommands()
+    public void ExecuteUnlockCommand_AfterSuccessfulRun_PersistsOutputMode()
+    {
+        var inputPath = CreateInput("settings.pdf");
+        var service = new ProtectServiceStub(CreateSuccessfulResult);
+        var settingsStore = new UserSettingsStoreStub(new UserSettings());
+        var viewModel = CreateViewModel(service, [inputPath], settingsStore);
+        viewModel.Password = "secret";
+        viewModel.OutputMode.ApplyMode(PdfOutputMode.ReplaceOriginal);
+
+        viewModel.ExecuteUnlockCommand.Execute(null);
+
+        var savedSettings = Assert.Single(settingsStore.SavedSettings);
+        Assert.Equal(nameof(PdfOutputMode.ReplaceOriginal), savedSettings.DefaultPdfOutputMode);
+        Assert.Equal("Replaced 1/1 files successfully!", viewModel.StatusMessage);
+        Assert.True(File.Exists(inputPath));
+        Assert.True(File.Exists(OutputFileHelper.BuildBackupPath(inputPath)));
+    }
+
+    [Fact]
+    public async Task ExecuteUnlockCommand_WhileRunning_DisablesExecuteCommand()
     {
         var inputPath = CreateInput("busy.pdf");
         using var started = new ManualResetEventSlim();
@@ -126,23 +168,20 @@ public sealed class UnlockViewModelTests : IDisposable
         var viewModel = CreateViewModel(service, [inputPath]);
         viewModel.Password = "secret";
 
-        var execution = viewModel.ExecuteUnlockAsync();
+        var execution = Task.Run(() => viewModel.ExecuteUnlockCommand.Execute(null));
         Assert.True(started.Wait(TimeSpan.FromSeconds(5)));
 
         try
         {
             Assert.True(viewModel.IsBusy);
-            Assert.False(viewModel.AddFilesCommand.CanExecute(null));
-            Assert.False(viewModel.RemoveFileCommand.CanExecute(viewModel.SelectedFiles[0]));
             Assert.False(viewModel.ExecuteUnlockCommand.CanExecute(null));
-            Assert.False(viewModel.GoBackCommand.CanExecute(null));
         }
         finally
         {
             release.Set();
         }
 
-        await execution;
+        await execution.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.False(viewModel.IsBusy);
         Assert.True(viewModel.ExecuteUnlockCommand.CanExecute(null));
     }
@@ -157,13 +196,15 @@ public sealed class UnlockViewModelTests : IDisposable
 
     private UnlockViewModel CreateViewModel(
         ProtectServiceStub service,
-        IEnumerable<string>? initialFiles = null)
+        IEnumerable<string>? initialFiles = null,
+        IUserSettingsStore? settingsStore = null)
     {
         return new UnlockViewModel(
             service,
             new FileDialogStub(),
             () => { },
-            initialFiles);
+            initialFiles,
+            settingsStore);
     }
 
     private string CreateInput(string fileName)
@@ -198,6 +239,29 @@ public sealed class UnlockViewModelTests : IDisposable
         {
             UnlockCalls.Add((input, options));
             return unlockHandler(input, options);
+        }
+    }
+
+    private sealed class UserSettingsStoreStub(UserSettings settings) : IUserSettingsStore
+    {
+        public int LoadCalls { get; private set; }
+
+        public List<UserSettings> SavedSettings { get; } = [];
+
+        public UserSettings Load()
+        {
+            LoadCalls++;
+            return settings;
+        }
+
+        public void Save(UserSettings savedSettings)
+        {
+            SavedSettings.Add(new UserSettings
+            {
+                LastWorkspace = savedSettings.LastWorkspace,
+                DefaultPdfOutputMode = savedSettings.DefaultPdfOutputMode,
+                DefaultCompressionLevel = savedSettings.DefaultCompressionLevel
+            });
         }
     }
 

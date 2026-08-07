@@ -1,4 +1,5 @@
-﻿using PDFToys.App.Services;
+﻿using PDFToys.App.Models;
+using PDFToys.App.Services;
 using PDFToys.Core.Contracts;
 using PDFToys.Core.Models;
 using System;
@@ -15,18 +16,23 @@ public sealed class ProtectViewModel : ViewModelBase
 {
     private readonly IProtectService _protectService;
     private readonly IFileDialogService _fileDialogService;
+    private readonly IUserSettingsStore? _settingsStore;
     private string _password = string.Empty;
     private string _statusMessage = "Ready";
     private bool _isBusy;
+
+    public PdfOutputModeSelection OutputMode { get; } = new();
 
     public ProtectViewModel(
         IProtectService protectService,
         IFileDialogService fileDialogService,
         Action goBackAction,
-        IEnumerable<string>? initialFiles = null)
+        IEnumerable<string>? initialFiles = null,
+        IUserSettingsStore? settingsStore = null)
     {
         _protectService = protectService;
         _fileDialogService = fileDialogService;
+        _settingsStore = settingsStore;
         SelectedFiles = [];
         if (initialFiles is not null)
         {
@@ -34,7 +40,7 @@ public sealed class ProtectViewModel : ViewModelBase
             {
                 if (!SelectedFiles.Any(existing => string.Equals(existing.FullPath, file, StringComparison.OrdinalIgnoreCase)))
                 {
-                    SelectedFiles.Add(new ProtectFileItem(file, Path.GetFileName(file)));
+                    SelectedFiles.Add(new PdfFileItem(file, Path.GetFileName(file)));
                 }
             }
         }
@@ -43,9 +49,14 @@ public sealed class ProtectViewModel : ViewModelBase
         RemoveFileCommand = new ParameterDelegateCommand(RemoveFile);
         ExecuteProtectCommand = new DelegateCommand(ExecuteProtect, () => !IsBusy);
         GoBackCommand = new DelegateCommand(goBackAction);
+
+        if (_settingsStore is not null)
+        {
+            OutputMode.ApplyModeFromName(_settingsStore.Load().DefaultPdfOutputMode);
+        }
     }
 
-    public ObservableCollection<ProtectFileItem> SelectedFiles { get; }
+    public ObservableCollection<PdfFileItem> SelectedFiles { get; }
 
     public string Password
     {
@@ -108,7 +119,7 @@ public sealed class ProtectViewModel : ViewModelBase
         {
             if (!SelectedFiles.Any(existing => string.Equals(existing.FullPath, path, StringComparison.OrdinalIgnoreCase)))
             {
-                SelectedFiles.Add(new ProtectFileItem(path, Path.GetFileName(path)));
+                SelectedFiles.Add(new PdfFileItem(path, Path.GetFileName(path)));
             }
         }
 
@@ -119,7 +130,7 @@ public sealed class ProtectViewModel : ViewModelBase
 
     private void RemoveFile(object? parameter)
     {
-        if (parameter is not ProtectFileItem fileItem)
+        if (parameter is not PdfFileItem fileItem)
         {
             return;
         }
@@ -182,6 +193,17 @@ public sealed class ProtectViewModel : ViewModelBase
                         continue;
                     }
 
+                    if (OutputMode.SelectedOutputMode == PdfOutputMode.ReplaceOriginal)
+                    {
+                        if (!OutputFileHelper.TryReplaceOriginal(result.OutputPath, selectedFilePath))
+                        {
+                            failed++;
+                            failedFiles.Add(selectedFilePath);
+                            failureMessages.Add("Could not replace original file.");
+                            continue;
+                        }
+                    }
+
                     succeeded++;
                     StatusMessage = $"Protected {succeeded + failed}/{total} files...";
                 }
@@ -193,42 +215,27 @@ public sealed class ProtectViewModel : ViewModelBase
                 }
             }
 
-            StatusMessage = FormatCompletion(
-                "Protected",
+            var successVerb = OutputMode.SelectedOutputMode == PdfOutputMode.ReplaceOriginal
+                ? "Replaced"
+                : "Protected";
+            StatusMessage = BatchStatusFormatter.FormatCompletion(
+                successVerb,
                 succeeded,
                 total,
                 failedFiles,
                 failureMessages);
+
+            if (failedFiles.Count == 0 && _settingsStore is not null)
+            {
+                var settings = _settingsStore.Load();
+                settings.DefaultPdfOutputMode = OutputMode.SelectedOutputMode.ToString();
+                _settingsStore.Save(settings);
+            }
         }
         finally
         {
             IsBusy = false;
         }
-    }
-
-    private static string FormatCompletion(
-        string successVerb,
-        int succeeded,
-        int total,
-        IReadOnlyList<string> failedFiles,
-        IReadOnlyList<string> failureMessages)
-    {
-        if (failedFiles.Count == 0)
-        {
-            return $"{successVerb} {succeeded}/{total} files successfully!";
-        }
-
-        var failures = new List<string>();
-        for (var i = 0; i < failedFiles.Count; i++)
-        {
-            var message = i < failureMessages.Count
-                ? failureMessages[i]
-                : "Unexpected error.";
-            failures.Add($"{failedFiles[i]}: {message}");
-        }
-
-        return $"{successVerb} {succeeded}/{total} files successfully, "
-            + $"{failedFiles.Count} failed. Failures: {string.Join("; ", failures)}";
     }
 
     private sealed class DelegateCommand : ICommand
@@ -278,4 +285,4 @@ public sealed class ProtectViewModel : ViewModelBase
     }
 }
 
-public sealed record ProtectFileItem(string FullPath, string FileName);
+public record PdfFileItem(string FullPath, string FileName);

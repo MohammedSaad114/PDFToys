@@ -3,80 +3,79 @@
              xmlns:vm="using:PDFToys.App.ViewModels"
              x:Class="PDFToys.App.Views.CompressView"
              x:DataType="vm:CompressViewModel">
-    <Grid Margin="24"
+	<Grid Margin="24"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"
           RowDefinitions="Auto,Auto,Auto,*,Auto">
-        <StackPanel Grid.Row="0" Spacing="8">
-            <Button Content="&#x2190; Back to Hub"
+		<StackPanel Grid.Row="0"
+                    Spacing="8">
+			<Button Content="← Back to Hub"
                     Command="{Binding GoBackCommand}"
                     Background="Transparent"
                     Foreground="LightSkyBlue"
                     Cursor="Hand"
                     Margin="0,0,0,15"
                     HorizontalAlignment="Left" />
-            <TextBlock Text="Compress PDF"
+			<TextBlock Text="Compress PDF"
                        FontSize="22"
                        FontWeight="Bold"
                        HorizontalAlignment="Center" />
-            <TextBlock Text="Recompresses embedded images. Text-only PDFs may see little size reduction."
+			<TextBlock Text="Recompresses embedded images. Text-only PDFs may see little size reduction."
                        TextWrapping="Wrap"
                        FontSize="12"
                        Foreground="DarkGray"
                        HorizontalAlignment="Center"
                        TextAlignment="Center" />
-        </StackPanel>
+		</StackPanel>
 
-        <Button Grid.Row="1"
+		<Button Grid.Row="1"
                 Content="+ Add PDFs to Compress"
                 Command="{Binding AddFilesCommand}"
-                Margin="0,10" />
+                Margin="0,10,0,10" />
 
-        <StackPanel Grid.Row="2"
+		<StackPanel Grid.Row="2"
                     Orientation="Horizontal"
                     Spacing="10"
                     Margin="0,0,0,10">
-            <TextBlock Text="Compression:"
+			<TextBlock Text="Compression:"
                        VerticalAlignment="Center" />
-            <ComboBox ItemsSource="{Binding CompressionLevels}"
+			<ComboBox ItemsSource="{Binding CompressionLevels}"
                       SelectedItem="{Binding SelectedCompressionLevel}"
-                      IsEnabled="{Binding !IsBusy}"
-                      Width="180">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:CompressionLevelItem">
-                        <TextBlock Text="{Binding Label}" />
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
-        </StackPanel>
+                      Width="180" />
+		</StackPanel>
 
-        <StackPanel Grid.Row="3" Spacing="6">
-            <TextBlock Text="SELECTED" FontWeight="SemiBold" />
-            <ListBox ItemsSource="{Binding SelectedFiles}" MaxHeight="200">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:CompressFileItem">
-                        <Border Padding="4,2">
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                <TextBlock Grid.Column="0"
-                                           Text="{Binding FileName}"
-                                           TextWrapping="Wrap" />
-                                <Button Grid.Column="1"
-                                        Content="X"
-                                        Command="{Binding $parent[UserControl].DataContext.RemoveFileCommand}"
-                                        CommandParameter="{Binding}" />
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </StackPanel>
+		<StackPanel Grid.Row="3" Spacing="6">
+			<TextBlock Text="SELECTED"
+                       FontWeight="SemiBold" />
+			<ListBox ItemsSource="{Binding SelectedFiles}"
+                     MaxHeight="200">
+				<ListBox.ItemTemplate>
+					<DataTemplate x:DataType="vm:PdfFileItem">
+						<Border Padding="4,2">
+							<Grid ColumnDefinitions="*,Auto"
+								  ColumnSpacing="8">
+								<TextBlock Grid.Column="0"
+										   Text="{Binding FileName}"
+										   TextWrapping="Wrap" />
+								<Button Grid.Column="1"
+										Content="X"
+										Command="{Binding $parent[UserControl].DataContext.RemoveFileCommand}"
+										CommandParameter="{Binding}" />
+							</Grid>
+						</Border>
+					</DataTemplate>
+				</ListBox.ItemTemplate>
+			</ListBox>
+		</StackPanel>
 
-        <StackPanel Grid.Row="4" Spacing="12">
-            <Button Content="Compress Files"
+		<StackPanel Grid.Row="4"
+                    Spacing="12">
+			<Button Content="Compress Files"
                     Command="{Binding ExecuteCompressCommand}"
                     HorizontalAlignment="Left"
                     Padding="12,8" />
-            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
-        </StackPanel>
-    </Grid>
+			<TextBlock Text="{Binding StatusMessage}"
+                       TextWrapping="Wrap" />
+		</StackPanel>
+	</Grid>
 </UserControl>

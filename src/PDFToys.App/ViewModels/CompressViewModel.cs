@@ -11,50 +11,59 @@ using System.Windows.Input;
 
 namespace PDFToys.App.ViewModels;
 
-public sealed record CompressFileItem(string FullPath, string FileName);
-
-public sealed record CompressionLevelItem(CompressionLevel Level, string Label);
-
 public sealed class CompressViewModel : ViewModelBase
 {
     private readonly ICompressionService _compressionService;
     private readonly IFileDialogService _fileDialogService;
+    private readonly IUserSettingsStore? _settingsStore;
     private string _statusMessage = "Ready";
-    private CompressionLevelItem _selectedCompressionLevel;
+    private string _selectedCompressionLevel = "Standard";
     private bool _isBusy;
 
     public CompressViewModel(
         ICompressionService compressionService,
         IFileDialogService fileDialogService,
         Action goBackAction,
-        IEnumerable<string>? initialFiles = null)
+        IEnumerable<string>? initialFiles = null,
+        IUserSettingsStore? settingsStore = null)
     {
         _compressionService = compressionService;
         _fileDialogService = fileDialogService;
+        _settingsStore = settingsStore;
         SelectedFiles = [];
-        CompressionLevels =
-        [
-            new CompressionLevelItem(CompressionLevel.Normal, "Standard"),
-            new CompressionLevelItem(CompressionLevel.Maximum, "Maximum")
-        ];
-        _selectedCompressionLevel = CompressionLevels[0];
+        CompressionLevels = ["Standard", "Maximum"];
 
         if (initialFiles is not null)
         {
-            AddUniqueFiles(initialFiles);
+            foreach (var file in initialFiles.Where(path => !string.IsNullOrWhiteSpace(path)))
+            {
+                if (!SelectedFiles.Any(existing => string.Equals(existing.FullPath, file, StringComparison.OrdinalIgnoreCase)))
+                {
+                    SelectedFiles.Add(new PdfFileItem(file, Path.GetFileName(file)));
+                }
+            }
         }
 
-        AddFilesCommand = new AsyncDelegateCommand(AddFilesAsync, () => !IsBusy);
-        RemoveFileCommand = new ParameterDelegateCommand(RemoveFile, () => !IsBusy);
-        ExecuteCompressCommand = new AsyncDelegateCommand(ExecuteCompressAsync, () => !IsBusy);
-        GoBackCommand = new DelegateCommand(goBackAction, () => !IsBusy);
+        AddFilesCommand = new AsyncDelegateCommand(AddFilesAsync);
+        RemoveFileCommand = new ParameterDelegateCommand(RemoveFile);
+        ExecuteCompressCommand = new DelegateCommand(ExecuteCompress, () => !IsBusy);
+        GoBackCommand = new DelegateCommand(goBackAction);
+
+        if (_settingsStore is not null)
+        {
+            var settings = _settingsStore.Load();
+            if (CompressionLevels.Contains(settings.DefaultCompressionLevel))
+            {
+                SelectedCompressionLevel = settings.DefaultCompressionLevel;
+            }
+        }
     }
 
-    public ObservableCollection<CompressFileItem> SelectedFiles { get; }
+    public ObservableCollection<PdfFileItem> SelectedFiles { get; }
 
-    public IReadOnlyList<CompressionLevelItem> CompressionLevels { get; }
+    public ObservableCollection<string> CompressionLevels { get; }
 
-    public CompressionLevelItem SelectedCompressionLevel
+    public string SelectedCompressionLevel
     {
         get => _selectedCompressionLevel;
         set
@@ -72,7 +81,7 @@ public sealed class CompressViewModel : ViewModelBase
     public string StatusMessage
     {
         get => _statusMessage;
-        private set
+        set
         {
             if (_statusMessage == value)
             {
@@ -96,10 +105,7 @@ public sealed class CompressViewModel : ViewModelBase
 
             _isBusy = value;
             OnPropertyChanged();
-            (AddFilesCommand as AsyncDelegateCommand)?.RaiseCanExecuteChanged();
-            (RemoveFileCommand as ParameterDelegateCommand)?.RaiseCanExecuteChanged();
-            (ExecuteCompressCommand as AsyncDelegateCommand)?.RaiseCanExecuteChanged();
-            (GoBackCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            (ExecuteCompressCommand as DelegateCommand)?.RaiseCanExecuteChanged();
         }
     }
 
@@ -111,119 +117,25 @@ public sealed class CompressViewModel : ViewModelBase
 
     public ICommand ExecuteCompressCommand { get; }
 
-    public async Task ExecuteCompressAsync()
-    {
-        if (IsBusy)
-        {
-            return;
-        }
-
-        if (SelectedFiles.Count == 0)
-        {
-            StatusMessage = "Please select PDF files first.";
-            return;
-        }
-
-        if (!CompressionLevels.Contains(SelectedCompressionLevel))
-        {
-            StatusMessage = "Please select a valid compression level.";
-            return;
-        }
-
-        IsBusy = true;
-        try
-        {
-            var selectedFiles = SelectedFiles.ToArray();
-            var failures = new List<CompressionFailure>();
-            var outputPaths = new List<string>();
-            var succeeded = 0;
-
-            for (var i = 0; i < selectedFiles.Length; i++)
-            {
-                var selectedFile = selectedFiles[i];
-                try
-                {
-                    if (!File.Exists(selectedFile.FullPath))
-                    {
-                        failures.Add(new CompressionFailure(selectedFile.FullPath, "File not found."));
-                    }
-                    else
-                    {
-                        var outputDirectory = Path.GetDirectoryName(selectedFile.FullPath)
-                            ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                        var options = new CompressionOptions(
-                            outputDirectory,
-                            SelectedCompressionLevel.Level);
-                        var result = await Task.Run(
-                            () => _compressionService.Compress(
-                                new PdfFile(selectedFile.FullPath),
-                                options));
-
-                        if (!result.IsSuccess)
-                        {
-                            var message = string.IsNullOrWhiteSpace(result.ErrorMessage)
-                                ? "Compression failed."
-                                : result.ErrorMessage;
-                            failures.Add(new CompressionFailure(selectedFile.FullPath, message));
-                        }
-                        else if (string.IsNullOrWhiteSpace(result.OutputPath) || !File.Exists(result.OutputPath))
-                        {
-                            failures.Add(new CompressionFailure(
-                                selectedFile.FullPath,
-                                "Compression completed without producing an output file."));
-                        }
-                        else
-                        {
-                            succeeded++;
-                            outputPaths.Add(result.OutputPath);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    failures.Add(new CompressionFailure(selectedFile.FullPath, ex.Message));
-                }
-
-                StatusMessage = $"Compressed {i + 1}/{selectedFiles.Length} files...";
-            }
-
-            StatusMessage = FormatCompletion(
-                succeeded,
-                selectedFiles.Length,
-                failures,
-                outputPaths);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
     private async Task AddFilesAsync()
     {
         var pickedFiles = await _fileDialogService.PickPdfFilesAsync();
-        AddUniqueFiles(pickedFiles);
+        foreach (var path in pickedFiles.Where(path => !string.IsNullOrWhiteSpace(path)))
+        {
+            if (!SelectedFiles.Any(existing => string.Equals(existing.FullPath, path, StringComparison.OrdinalIgnoreCase)))
+            {
+                SelectedFiles.Add(new PdfFileItem(path, Path.GetFileName(path)));
+            }
+        }
 
         StatusMessage = SelectedFiles.Count == 0
             ? "No PDF files selected."
             : $"{SelectedFiles.Count} PDF files selected.";
     }
 
-    private void AddUniqueFiles(IEnumerable<string> files)
-    {
-        foreach (var path in files.Where(path => !string.IsNullOrWhiteSpace(path)))
-        {
-            if (!SelectedFiles.Any(existing =>
-                    string.Equals(existing.FullPath, path, StringComparison.OrdinalIgnoreCase)))
-            {
-                SelectedFiles.Add(new CompressFileItem(path, Path.GetFileName(path)));
-            }
-        }
-    }
-
     private void RemoveFile(object? parameter)
     {
-        if (parameter is not CompressFileItem fileItem)
+        if (parameter is not PdfFileItem fileItem)
         {
             return;
         }
@@ -234,87 +146,157 @@ public sealed class CompressViewModel : ViewModelBase
             : $"{SelectedFiles.Count} PDF files selected.";
     }
 
-    private static string FormatCompletion(
-        int succeeded,
-        int total,
-        IReadOnlyList<CompressionFailure> failures,
-        IReadOnlyList<string> outputPaths)
+    private void ExecuteCompress()
     {
-        if (failures.Count == 0)
+        if (IsBusy)
         {
-            return total == 1 && outputPaths.Count == 1
-                ? $"Compression complete: {outputPaths[0]}"
-                : $"Compressed {succeeded}/{total} files successfully.";
+            return;
         }
 
-        var failureDetails = string.Join(
-            "; ",
-            failures.Select(failure => $"{failure.FilePath}: {failure.Message}"));
-        return $"Compressed {succeeded}/{total} files successfully, "
-            + $"{failures.Count} failed. Failures: {failureDetails}";
-    }
-
-    private sealed record CompressionFailure(string FilePath, string Message);
-
-    private sealed class DelegateCommand
-        (Action execute, Func<bool>? canExecute = null) : ICommand
-    {
-        public event EventHandler? CanExecuteChanged;
-
-        public bool CanExecute(object? parameter) => canExecute?.Invoke() ?? true;
-
-        public void Execute(object? parameter) => execute();
-
-        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    private sealed class ParameterDelegateCommand
-        (Action<object?> execute, Func<bool>? canExecute = null) : ICommand
-    {
-        public event EventHandler? CanExecuteChanged;
-
-        public bool CanExecute(object? parameter) => canExecute?.Invoke() ?? true;
-
-        public void Execute(object? parameter) => execute(parameter);
-
-        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    private sealed class AsyncDelegateCommand
-        (Func<Task> execute, Func<bool>? canExecute = null) : ICommand
-    {
-        private bool _isExecuting;
-
-        public event EventHandler? CanExecuteChanged;
-
-        public bool CanExecute(object? parameter) =>
-            !_isExecuting && (canExecute?.Invoke() ?? true);
-
-        public async void Execute(object? parameter)
+        IsBusy = true;
+        try
         {
-            await ExecuteAsync();
-        }
-
-        public async Task ExecuteAsync()
-        {
-            if (!CanExecute(null))
+            if (SelectedFiles.Count == 0)
             {
+                StatusMessage = "Please select PDF files first.";
                 return;
             }
 
-            _isExecuting = true;
-            RaiseCanExecuteChanged();
-            try
+            if (!CompressionLevels.Contains(SelectedCompressionLevel))
             {
-                await execute();
+                StatusMessage = "Please select a valid compression level.";
+                return;
             }
-            finally
+
+            var succeeded = 0;
+            var failed = 0;
+            var total = SelectedFiles.Count;
+            var failedFiles = new List<string>();
+            var failureMessages = new List<string>();
+            var quality = SelectedCompressionLevel.Equals("Maximum", StringComparison.OrdinalIgnoreCase)
+                ? CompressionLevel.Maximum
+                : CompressionLevel.Normal;
+
+            foreach (var selectedFile in SelectedFiles)
             {
-                _isExecuting = false;
-                RaiseCanExecuteChanged();
+                try
+                {
+                    var selectedFilePath = selectedFile.FullPath;
+                    if (!File.Exists(selectedFilePath))
+                    {
+                        failed++;
+                        failedFiles.Add(selectedFilePath);
+                        failureMessages.Add("File not found.");
+                        continue;
+                    }
+
+                    var outputDirectory = Path.GetDirectoryName(selectedFilePath)
+                        ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                    var options = new CompressionOptions(outputDirectory, quality);
+                    var result = _compressionService.Compress(new PdfFile(selectedFilePath), options);
+                    if (!result.IsSuccess)
+                    {
+                        failed++;
+                        failedFiles.Add(selectedFilePath);
+                        failureMessages.Add(result.ErrorMessage);
+                        continue;
+                    }
+
+                    var expectedPath = BuildCompressedOutputPath(selectedFilePath);
+                    if (!string.IsNullOrWhiteSpace(result.OutputPath) &&
+                        File.Exists(result.OutputPath) &&
+                        !string.Equals(result.OutputPath, expectedPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (OutputFileHelper.MoveToExpectedPath(result.OutputPath, expectedPath) is null)
+                        {
+                            failed++;
+                            failedFiles.Add(selectedFilePath);
+                            failureMessages.Add("Could not move compressed output to expected path.");
+                            continue;
+                        }
+                    }
+
+                    succeeded++;
+                    StatusMessage = $"Compressed {succeeded + failed}/{total} files...";
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    failedFiles.Add(selectedFile.FullPath);
+                    failureMessages.Add(ex.Message);
+                }
+            }
+
+            StatusMessage = BatchStatusFormatter.FormatCompletion(
+                "Compressed",
+                succeeded,
+                total,
+                failedFiles,
+                failureMessages);
+
+            if (failedFiles.Count == 0 && _settingsStore is not null)
+            {
+                var settings = _settingsStore.Load();
+                settings.DefaultCompressionLevel = SelectedCompressionLevel;
+                _settingsStore.Save(settings);
             }
         }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private static string BuildCompressedOutputPath(string inputPath)
+    {
+        var directory = Path.GetDirectoryName(inputPath) ?? string.Empty;
+        var fileName = Path.GetFileNameWithoutExtension(inputPath);
+        return Path.Combine(directory, $"{fileName}_compressed.pdf");
+    }
+
+    private sealed class DelegateCommand : ICommand
+    {
+        private readonly Action _execute;
+        private readonly Func<bool>? _canExecute;
+
+        public DelegateCommand(Action execute, Func<bool>? canExecute = null)
+        {
+            _execute = execute;
+            _canExecute = canExecute;
+        }
+
+        public event EventHandler? CanExecuteChanged;
+
+        public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
+
+        public void Execute(object? parameter) => _execute();
 
         public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private sealed class ParameterDelegateCommand(Action<object?> execute) : ICommand
+    {
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => execute(parameter);
+    }
+
+    private sealed class AsyncDelegateCommand(Func<Task> execute) : ICommand
+    {
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public async void Execute(object? parameter) => await execute();
     }
 }
