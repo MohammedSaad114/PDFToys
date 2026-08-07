@@ -4,15 +4,42 @@
              xmlns:views="using:PDFToys.App.Views"
              x:Class="PDFToys.App.App"
              RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+	<!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
-    <Application.DataTemplates>
+	<Application.Styles>
+		<FluentTheme />
+	</Application.Styles>
+
+	<Application.DataTemplates>
+		<DataTemplate DataType="vm:MergeViewModel">
+			<views:MergeView />
+		</DataTemplate>
+		<DataTemplate DataType="vm:SplitViewModel">
+			<views:SplitView />
+		</DataTemplate>
+		<DataTemplate DataType="vm:ProtectViewModel">
+			<views:ProtectView />
+		</DataTemplate>
+		<DataTemplate DataType="vm:CompressViewModel">
+			<views:CompressView />
+		</DataTemplate>
+		<DataTemplate DataType="vm:StartupOperationViewModel">
+			<views:StartupOperationView />
+		</DataTemplate>
 		<DataTemplate DataType="vm:HomeViewModel">
 			<views:HomeView />
 		</DataTemplate>
-    </Application.DataTemplates>
-  
-    <Application.Styles>
-        <FluentTheme />
-    </Application.Styles>
+		<DataTemplate DataType="vm:OrganizePagesViewModel">
+			<views:OrganizePagesView />
+		</DataTemplate>
+		<DataTemplate DataType="vm:UnlockViewModel">
+			<views:UnlockView />
+		</DataTemplate>
+		<DataTemplate DataType="vm:ConvertExportViewModel">
+			<views:ConvertExportView />
+		</DataTemplate>
+		<DataTemplate DataType="vm:AboutViewModel">
+			<views:AboutView />
+		</DataTemplate>
+	</Application.DataTemplates>
 </Application>

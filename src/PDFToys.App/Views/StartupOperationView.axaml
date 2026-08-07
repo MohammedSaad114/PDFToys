@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PDFToys.App.ViewModels"
+             x:DataType="vm:StartupOperationViewModel"
+             x:Class="PDFToys.App.Views.StartupOperationView">
+	<Border Padding="24">
+		<StackPanel Spacing="12">
+			<TextBlock Text="{Binding Title}"
+                       FontSize="22"
+                       FontWeight="Bold" />
+			<TextBlock Text="{Binding Message}"
+                       TextWrapping="Wrap" />
+		</StackPanel>
+	</Border>
+</UserControl>

@@ -1,4 +1,6 @@
 ﻿using Avalonia;
+using Microsoft.Extensions.DependencyInjection;
+using PDFToys.App.Services;
 using System;
 
 namespace PDFToys.App;
@@ -11,7 +13,34 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        if (TryRunHeadlessConversion(args, out var exitCode))
+        {
+            Environment.ExitCode = exitCode;
+            return;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    private static bool TryRunHeadlessConversion(string[] args, out int exitCode)
+    {
+        var request = new ArgumentParser().Parse(args);
+        var route = new StartupOperationRouter().BuildRoute(request);
+        if (route.Kind != StartupRouteKind.HeadlessConversion)
+        {
+            exitCode = 0;
+            return false;
+        }
+
+        using var services = new ServiceCollection()
+            .AddPdfToysCore()
+            .AddSingleton<HeadlessConversionExecutor>()
+            .BuildServiceProvider();
+
+        var executor = services.GetRequiredService<HeadlessConversionExecutor>();
+        var result = executor.Execute(route);
+        exitCode = result.ExitCode;
+        return true;
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.
