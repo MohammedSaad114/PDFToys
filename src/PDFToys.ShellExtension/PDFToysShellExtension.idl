@@ -1,0 +1,18 @@
+// PDFToys.ShellExtension.idl : IDL source for PDFToys.ShellExtension
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (PDFToysShellExtension.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	uuid(1da6b74d-ba29-4d50-9244-89ab06b1aebe),
+	version(1.0),
+]
+library PDFToysShellExtensionLib
+{
+	importlib("stdole2.tlb");
+};
+
