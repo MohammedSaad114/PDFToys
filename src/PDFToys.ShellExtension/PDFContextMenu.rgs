@@ -1,0 +1,25 @@
+HKCR
+{
+	PDFToys.ShellExtension.PDFContextMenu.1 = s 'PDFToys PDF Context Menu'
+	{
+		CLSID = s '{2a97e713-bd5f-45c4-a410-e57a3c3d86a4}'
+	}
+	PDFToys.ShellExtension.PDFContextMenu = s 'PDFToys PDF Context Menu'
+	{		
+		CurVer = s 'PDFToys.ShellExtension.PDFContextMenu.1'
+	}
+	NoRemove CLSID
+	{
+		ForceRemove {2a97e713-bd5f-45c4-a410-e57a3c3d86a4} = s 'PDFToys PDF Context Menu'
+		{
+			ProgID = s 'PDFToys.ShellExtension.PDFContextMenu.1'
+			VersionIndependentProgID = s 'PDFToys.ShellExtension.PDFContextMenu'
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			TypeLib = s '{1da6b74d-ba29-4d50-9244-89ab06b1aebe}'
+			Version = s '1.0'
+		}
+	}
+}

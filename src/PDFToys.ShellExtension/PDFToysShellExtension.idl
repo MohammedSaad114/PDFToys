@@ -8,11 +8,27 @@ import "oaidl.idl";
 import "ocidl.idl";
 
 [
+	object,
+	uuid(6db695b5-ee46-4e2a-898e-6c95590a92ca),
+	pointer_default(unique)
+]
+interface IPDFContextMenu : IUnknown
+{
+};
+[
 	uuid(1da6b74d-ba29-4d50-9244-89ab06b1aebe),
 	version(1.0),
 ]
 library PDFToysShellExtensionLib
 {
 	importlib("stdole2.tlb");
+	[
+		uuid(2a97e713-bd5f-45c4-a410-e57a3c3d86a4)
+	]
+	coclass PDFContextMenu
+	{
+		[default] interface IPDFContextMenu;
+	};
 };
 
+import "shobjidl.idl";

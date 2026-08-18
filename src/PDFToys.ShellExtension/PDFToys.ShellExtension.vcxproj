@@ -217,6 +217,7 @@
     <ClInclude Include="dllmain.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="PDFContextMenu.h" />
     <ClInclude Include="PDFToysShellExtension_i.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
@@ -242,6 +243,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="PDFContextMenu.cpp" />
     <ClCompile Include="PDFToys.ShellExtension.cpp" />
     <ClCompile Include="PDFToysShellExtension_i.c">
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</CompileAsManaged>
@@ -262,6 +264,7 @@
     <ResourceCompile Include="PDFToys.ShellExtension.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="PDFContextMenu.rgs" />
     <None Include="PDFToys.ShellExtension.def" />
     <None Include="PDFToys.ShellExtension.rgs" />
   </ItemGroup>
