@@ -22,4 +22,14 @@ HKCR
 			Version = s '1.0'
 		}
 	}
+	    NoRemove '*'
+    {
+        NoRemove shellex
+        {
+            NoRemove ContextMenuHandlers
+            {
+                ForceRemove PDFToys = s '{2a97e713-bd5f-45c4-a410-e57a3c3d86a4}'
+            }
+        }
+    }
 }
