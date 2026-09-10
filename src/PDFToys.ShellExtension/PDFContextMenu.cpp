@@ -2,6 +2,7 @@
 
 #include "pch.h"
 #include "PDFContextMenu.h"
+#include "MenuBitmapCache.h"
 #include <shlwapi.h>
 #include <algorithm>
 #include <cwctype>
@@ -10,6 +11,8 @@
 
 namespace {
 	const wchar_t* kContractPrefix = L"--contract-version 1";
+	const wchar_t* kAppVerb = L"open";
+
 	std::wstring ToLower(std::wstring value)
 	{
 		std::transform(value.begin(), value.end(), value.begin(), towlower);
@@ -346,6 +349,61 @@ namespace {
 
 		return commands;
 	}
+	void ApplyMenuBitmap(HMENU menu, UINT itemId, bool byPosition, HBITMAP bitmap)
+	{
+		if (bitmap == nullptr)
+		{
+			return;
+		}
+
+		SetMenuItemBitmaps(menu, itemId, byPosition ? TRUE : FALSE, bitmap, bitmap);
+	}
+
+	void ApplyPopupMenuBitmap(HMENU menu, UINT indexMenu, HBITMAP bitmap)
+	{
+		if (bitmap == nullptr)
+		{
+			return;
+		}
+
+		MENUITEMINFOW itemInfo = {};
+		itemInfo.cbSize = sizeof(itemInfo);
+		itemInfo.fMask = MIIM_BITMAP;
+		itemInfo.hbmpItem = bitmap;
+		SetMenuItemInfoW(menu, indexMenu, TRUE, &itemInfo);
+
+		SetMenuItemBitmaps(menu, indexMenu, TRUE, bitmap, bitmap);
+	}
+
+	bool IsVerbMatch(const CMINVOKECOMMANDINFO* pici, const wchar_t* expectedVerb)
+	{
+		if (pici == nullptr || expectedVerb == nullptr)
+		{
+			return false;
+		}
+
+		if (HIWORD(pici->lpVerb) == 0)
+		{
+			return false;
+		}
+
+		if (pici->cbSize >= sizeof(CMINVOKECOMMANDINFOEX) &&
+			(pici->fMask & CMIC_MASK_UNICODE) != 0)
+		{
+			const auto* piciex = reinterpret_cast<const CMINVOKECOMMANDINFOEX*>(pici);
+			if (piciex->lpVerbW != nullptr)
+			{
+				return _wcsicmp(piciex->lpVerbW, expectedVerb) == 0;
+			}
+		}
+
+		if (pici->lpVerb != nullptr)
+		{
+			return _stricmp(pici->lpVerb, CW2A(expectedVerb)) == 0;
+		}
+
+		return false;
+	}
 } // namespace
 
 // CPDFContextMenu
@@ -404,6 +462,8 @@ IFACEMETHODIMP CPDFContextMenu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UI
 	{
 		return E_OUTOFMEMORY;
 	}
+
+	const HBITMAP menuBitmap = MenuBitmapCache::GetBitmap(nullptr);
 	for (size_t i = 0; i < m_activeCommands.size(); ++i)
 	{
 		const UINT commandId = idCmdFirst + static_cast<UINT>(i);
@@ -417,19 +477,24 @@ IFACEMETHODIMP CPDFContextMenu::QueryContextMenu(HMENU hmenu, UINT indexMenu, UI
 			DestroyMenu(subMenu);
 			return HRESULT_FROM_WIN32(GetLastError());
 		}
+
+		ApplyMenuBitmap(subMenu, commandId, false, menuBitmap);
 	}
 
 	MENUITEMINFOW parentItem = {};
 	parentItem.cbSize = sizeof(parentItem);
-	parentItem.fMask = MIIM_STRING | MIIM_SUBMENU;
+	parentItem.fMask = MIIM_STRING | MIIM_SUBMENU | MIIM_BITMAP;
 	parentItem.hSubMenu = subMenu;
 	parentItem.dwTypeData = const_cast<LPWSTR>(L"PDFToys");
+	parentItem.hbmpItem = menuBitmap;
+
 	if (!InsertMenuItemW(hmenu, indexMenu, TRUE, &parentItem))
 	{
 		DestroyMenu(subMenu);
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
 
+	ApplyPopupMenuBitmap(hmenu, indexMenu, menuBitmap);
 
 	// Tell Windows how many items we added
 	return MAKE_HRESULT(SEVERITY_SUCCESS, 0, USHORT(m_activeCommands.size()));
@@ -463,9 +528,76 @@ IFACEMETHODIMP CPDFContextMenu::GetCommandString(UINT_PTR idCmd, UINT uType, UIN
 	return S_OK;
 }
 
-IFACEMETHODIMP CPDFContextMenu::InvokeCommand(
-	CMINVOKECOMMANDINFO* pici)
+// 4. THE ACTION! Windows runs this when the user actually clicks your "PDFToys" button.
+IFACEMETHODIMP CPDFContextMenu::InvokeCommand(CMINVOKECOMMANDINFO* pici)
 {
-	UNREFERENCED_PARAMETER(pici);
-	return E_NOTIMPL;
+	if (pici == nullptr)
+	{
+		return E_INVALIDARG;
+	}
+
+	size_t commandIndex = SIZE_MAX;
+	if (HIWORD(pici->lpVerb) == 0)
+	{
+		commandIndex = LOWORD(pici->lpVerb);
+	}
+	else
+	{
+		for (size_t i = 0; i < m_activeCommands.size(); ++i)
+		{
+			if (IsVerbMatch(pici, m_activeCommands[i].verb.c_str()))
+			{
+				commandIndex = i;
+				break;
+			}
+		}
+	}
+
+	if (commandIndex >= m_activeCommands.size())
+	{
+		return E_INVALIDARG;
+	}
+
+	wchar_t dllPath[MAX_PATH];
+	const DWORD dllPathLength = GetModuleFileNameW(_AtlBaseModule.GetModuleInstance(), dllPath, ARRAYSIZE(dllPath));
+	if (dllPathLength == 0)
+	{
+		return HRESULT_FROM_WIN32(GetLastError());
+	}
+
+	if (dllPathLength >= ARRAYSIZE(dllPath))
+	{
+		return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+	}
+
+	std::wstring exePath = dllPath;
+	size_t pos = exePath.find_last_of(L"\\/");
+	if (pos == std::wstring::npos)
+	{
+		return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+	}
+
+	exePath = exePath.substr(0, pos) + L"\\PDFToys.App.exe";
+	if (!PathFileExistsW(exePath.c_str()))
+	{
+		return HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
+	}
+
+	const std::wstring& args = m_activeCommands[commandIndex].arguments;
+
+	// Launch the C# application!
+	SHELLEXECUTEINFOW sei = { sizeof(sei) };
+	sei.fMask = SEE_MASK_DEFAULT;
+	sei.hwnd = pici->hwnd;
+	sei.nShow = SW_SHOWNORMAL;
+	sei.lpVerb = kAppVerb;
+	sei.lpFile = exePath.c_str();
+	sei.lpParameters = args.c_str(); // Launch command contract arguments
+
+	if (!ShellExecuteExW(&sei))
+	{
+		return HRESULT_FROM_WIN32(GetLastError());
+	}
+
+	return S_OK;
 }

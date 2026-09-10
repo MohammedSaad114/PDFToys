@@ -5,6 +5,7 @@
 #define IDS_PROJNAME                    100
 #define IDR_PDFTOYSSHELLEXTENSION       101
 #define IDR_PDFCONTEXTMENU              106
+#define IDI_PDFTOYS                     107
 
 // Next default values for new objects
 #ifdef APSTUDIO_INVOKED
