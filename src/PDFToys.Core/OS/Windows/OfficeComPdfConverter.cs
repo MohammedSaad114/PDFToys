@@ -154,7 +154,7 @@ public sealed class OfficeComPdfConverter : IConversionStrategy
 
     private object CreateComInstance(string progId, string displayName)
     {
-        var type = Type.GetTypeFromProgID(progId, throwOnError: true);
+        var type = Type.GetTypeFromProgID(progId, throwOnError: false);
         if (type is null) throw new InvalidOperationException($"{displayName} is not installed or cannot be started.");
 
         return Activator.CreateInstance(type)
