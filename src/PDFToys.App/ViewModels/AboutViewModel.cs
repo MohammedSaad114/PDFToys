@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows.Input;
@@ -11,8 +12,11 @@ public sealed class AboutViewModel : ViewModelBase
     {
         GoBackCommand = new DelegateCommand(goBackAction);
         var version = Assembly.GetExecutingAssembly().GetName().Version;
-        VersionText = version is null ? "0.1.0" : version.ToString();
+        VersionText = version is null ? "0.1.0" : version.ToString(3);
+        LicensePath = Path.Combine(AppContext.BaseDirectory, "LICENSE");
         NoticePath = Path.Combine(AppContext.BaseDirectory, "NOTICE");
+        OpenLicenseCommand = new DelegateCommand(() => OpenDocument(LicensePath));
+        OpenNoticesCommand = new DelegateCommand(() => OpenDocument(NoticePath));
     }
 
     public string Title => "About PDFToys";
@@ -20,16 +24,29 @@ public sealed class AboutViewModel : ViewModelBase
     public string VersionText { get; }
 
     public string LicenseSummary =>
-        "PDFToys is distributed under the Apache License 2.0. See LICENSE in the repository or installer folder.";
+        "PDFToys is distributed under the Apache License 2.0.";
 
+    public string LicensePath { get; }
     public string NoticePath { get; }
 
-    public string NoticeSummary =>
-        File.Exists(NoticePath)
-            ? $"Third-party notices: {NoticePath}"
-            : "Third-party notices are listed in the NOTICE file shipped with PDFToys.";
+    public bool IsLicenseAvailable => File.Exists(LicensePath);
+    public bool AreNoticesAvailable => File.Exists(NoticePath);
 
     public ICommand GoBackCommand { get; }
+    public ICommand OpenLicenseCommand { get; }
+    public ICommand OpenNoticesCommand { get; }
+
+    private static void OpenDocument(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        var startInfo = new ProcessStartInfo("notepad.exe") { UseShellExecute = false };
+        startInfo.ArgumentList.Add(path);
+        Process.Start(startInfo);
+    }
 
     private sealed class DelegateCommand(Action execute) : ICommand
     {

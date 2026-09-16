@@ -18,8 +18,14 @@
                        HorizontalAlignment="Center" />
 			<TextBlock Text="{Binding LicenseSummary}"
                        TextWrapping="Wrap" />
-			<TextBlock Text="{Binding NoticeSummary}"
-                       TextWrapping="Wrap" />
+			<StackPanel Orientation="Horizontal" Spacing="12">
+				<Button Content="License"
+						Command="{Binding OpenLicenseCommand}"
+						IsEnabled="{Binding IsLicenseAvailable}" />
+				<Button Content="Third-party notices"
+						Command="{Binding OpenNoticesCommand}"
+						IsEnabled="{Binding AreNoticesAvailable}" />
+			</StackPanel>
 		</StackPanel>
 	</Grid>
 </UserControl>
