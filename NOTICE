@@ -1,0 +1,15 @@
+PDFToys Third-Party Notices
+============================
+
+PDFToys includes or depends on the following open-source components:
+
+- Avalonia (MIT) — https://avaloniaui.net/
+- PDFsharp (MIT) — https://github.com/empira/PDFsharp
+- PdfPig (Apache 2.0) — https://github.com/UglyToad/PdfPig
+- SkiaSharp (MIT) — https://github.com/mono/SkiaSharp
+- PDFtoImage (MIT) — https://github.com/sungam3rr/PDFtoImage
+- Svg.Skia (MIT) — https://github.com/wieslawsoltes/Svg.Skia
+- CommunityToolkit.Mvvm (MIT) — https://github.com/CommunityToolkit/dotnet
+- Microsoft.Extensions.DependencyInjection (MIT) — https://github.com/dotnet/runtime
+
+PDFToys itself is distributed under the Apache License 2.0. See LICENSE in the repository root.
