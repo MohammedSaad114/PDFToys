@@ -10,7 +10,9 @@ PDFToys is a Windows desktop utility for common PDF workflows: merge, split, com
 
 PDFToys runs on 64-bit Windows 10 or later. The installer is self-contained, so you do not need to install the .NET runtime separately. Microsoft Word, Excel, or PowerPoint is needed only when converting the corresponding Office documents to PDF.
 
-The first public installer release has not been published yet. When it is available, download `PDFToys-0.1.0-setup.exe` from the [latest release](https://github.com/MohammedSaad114/PDFToys/releases/latest), run the setup file, then open PDFToys from the Start menu or its optional desktop shortcut. The installer registers the Explorer context menu automatically.
+Download the Windows setup `.exe` from the [latest release](https://github.com/MohammedSaad114/PDFToys/releases/latest), then run the installer.
+
+Open PDFToys from the Start menu or its optional desktop shortcut. The installer registers the Explorer context menu automatically.
 
 ## Features and quick start
 
