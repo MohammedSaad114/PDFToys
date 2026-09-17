@@ -1,10 +1,26 @@
-# PDFToys
+<p align="center">
+  <img src="docs/assets/pdftoys-logo.png" alt="PDFToys logo" width="72">
+</p>
 
-## Introduction
+<h1 align="center">PDFToys</h1>
 
-PDFToys is a Windows desktop utility for common PDF workflows: merge, split, compress, protect, unlock, organize pages, convert files to PDF, and export PDFs to images or Markdown.
+<p align="center">
+  Everyday PDF tools: merge, split, and manage PDFs from File Explorer.
+</p>
 
-![PDFToys home screen showing its PDF tools](docs/assets/pdftoys-home.png)
+<p align="center">
+  <a href="https://github.com/MohammedSaad114/PDFToys/releases/latest">Download for Windows</a>
+  ·
+  <a href="#features-and-quick-start">Features</a>
+  ·
+  <a href="#building-from-source">Build from source</a>
+</p>
+
+<p align="center">
+  <img src="docs/assets/pdftoys-home.png"
+       alt="PDFToys main window showing its PDF tools"
+       width="600">
+</p>
 
 ## Installation
 
